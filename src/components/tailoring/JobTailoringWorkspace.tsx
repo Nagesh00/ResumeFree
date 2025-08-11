@@ -7,20 +7,20 @@
 
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../../lib/store';
-import { updateResume } from '../../../lib/store/slices/resumeSlice';
+import { RootState } from '../../lib/store';
+import { updateResume } from '../../lib/store/resumeSlice';
 import { 
   setJobDescription, 
   generateSuggestions, 
   applySuggestion, 
   revertChange 
-} from '../../../lib/store/slices/tailoringSlice';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Button } from '../../ui/button';
-import { Textarea } from '../../ui/textarea';
-import { Input } from '../../ui/input';
-import { Badge } from '../../ui/badge';
-import { Progress } from '../../ui/progress';
+} from '../../lib/store/jobTailoringSlice';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
+import { Progress } from '../ui/progress';
 import { 
   Link, 
   Sparkles, 
@@ -34,7 +34,7 @@ import {
 import { DiffView } from './DiffView';
 import { KeywordCloud } from './KeywordCloud';
 import { runAI } from '../../../lib/ai/run';
-import { extractJobKeywords, calculateATSScore } from '../../../lib/ats/keyword-extract';
+import { extractJobKeywords, calculateATSScore, generateATSSuggestions } from '../../lib/ats/keyword-extract';
 import { toast } from 'react-hot-toast';
 
 interface TailoringSuggestion {

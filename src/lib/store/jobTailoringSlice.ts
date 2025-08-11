@@ -325,6 +325,12 @@ export const {
   clearError,
 } = jobTailoringSlice.actions;
 
+// Aliases for backwards compatibility
+export const generateSuggestions = analyzeJobDescription;
+export const revertChange = revertSuggestion;
+export const analyzeJobForTailoring = analyzeJobDescription;
+export const calculateATSScore = analyzeJobDescription; // Can be same or separate thunk
+
 export default jobTailoringSlice.reducer;
 
 // Selectors

@@ -292,6 +292,9 @@ export const {
   applyBulkUpdates,
 } = resumeSlice.actions;
 
+// Alias for backwards compatibility
+export const updateResume = applyBulkUpdates;
+
 export default resumeSlice.reducer;
 
 // Selectors

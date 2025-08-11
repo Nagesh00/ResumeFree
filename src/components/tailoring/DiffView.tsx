@@ -6,7 +6,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '../../ui/button';
+import { Button } from '../ui/button';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface DiffViewProps {

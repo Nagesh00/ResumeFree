@@ -25,8 +25,8 @@ import {
   Unlock,
   FileText
 } from 'lucide-react';
-import { Resume } from '../../../lib/schema/resume';
-import { RootState } from '../../../store';
+import { Resume } from '../../lib/schema/resume';
+import { RootState } from '../../lib/store';
 
 interface ResumeSnapshot {
   id: string;
@@ -677,3 +677,5 @@ export const CollaborationManager: React.FC<{
     </div>
   );
 };
+
+export default CollaborationManager;

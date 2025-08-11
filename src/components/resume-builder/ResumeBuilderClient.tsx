@@ -40,7 +40,6 @@ export default function ResumeBuilderClient() {
       dispatch(updateResume(updatedResume));
     }
   };
-  };
 
   // Experience handlers
   const addExperience = () => {
@@ -556,17 +555,17 @@ export default function ResumeBuilderClient() {
                       <div className="text-sm text-gray-600 space-x-2">
                         {resume.contact.email && <span>{resume.contact.email}</span>}
                         {resume.contact.phone && <span>• {resume.contact.phone}</span>}
-                        {resume.personalInfo.location && <span>• {resume.personalInfo.location}</span>}
+                        {resume.contact.location && <span>• {resume.contact.location}</span>}
                       </div>
                     </div>
 
-                    {resume.personalInfo.summary && (
+                    {resume.summary && (
                       <div className="mb-6">
                         <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-3">
                           Professional Summary
                         </h2>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                          {resume.personalInfo.summary}
+                          {resume.summary}
                         </p>
                       </div>
                     )}

@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Badge } from '../../ui/badge';
+import { Badge } from '../ui/badge';
 
 interface KeywordCloudProps {
   keywords: string[];

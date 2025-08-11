@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const result = await runAI({
       provider: provider as any,
       apiKey,
-      model: undefined, // Use default model
+      model: 'gpt-3.5-turbo', // Use default model
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1,
       maxTokens: 100,

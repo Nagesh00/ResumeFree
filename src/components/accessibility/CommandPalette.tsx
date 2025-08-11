@@ -39,7 +39,7 @@ import {
   SkipBack,
   SkipForward,
 } from 'lucide-react';
-import { RootState } from '../../../store';
+import { RootState } from '../../lib/store';
 
 interface CommandAction {
   id: string;
@@ -732,3 +732,5 @@ export const useGlobalKeyboardShortcuts = () => {
     setIsShortcutsHelpOpen,
   };
 };
+
+export default CommandPalette;

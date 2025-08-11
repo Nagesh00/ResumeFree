@@ -8,6 +8,15 @@ import { anthropicProvider } from '../providers/anthropic';
 import { googleProvider } from '../providers/google';
 import { azureProvider } from '../providers/azure';
 import { ollamaProvider } from '../providers/ollama';
+import { 
+  AIProvider, 
+  AIMessage, 
+  AIResponse, 
+  AIProviderType,
+  AISettings,
+  AIOperation,
+  AIProviderError
+} from './types';
 
 export type AIMessage = { 
   role: 'system' | 'user' | 'assistant'; 
@@ -36,13 +45,14 @@ export interface AIProvider {
 }
 
 export interface RunAIOptions {
-  provider: 'openai' | 'anthropic' | 'google' | 'azure' | 'ollama';
+  provider: AIProviderType;
   model: string;
   messages: AIMessage[];
   apiKey: string;
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
+  operation?: AIOperation;
 }
 
 // Provider registry
@@ -98,6 +108,13 @@ export function getProviderModels(provider: string): string[] {
 }
 
 /**
+ * Get provider instance
+ */
+export function getProvider(provider: string): AIProvider | null {
+  return providers[provider] || null;
+}
+
+/**
  * Check if provider is available (has API key)
  */
 export function isProviderAvailable(provider: string, apiKey?: string): boolean {
@@ -131,6 +148,29 @@ export function validateProviderConfig(provider: string, apiKey: string, model: 
     errors,
   };
 }
+
+/**
+ * Enhanced AI runner with advanced features
+ */
+export async function runAIEnhanced(options: {
+  messages: AIMessage[];
+  settings?: Partial<AISettings>;
+  operation?: AIOperation;
+  signal?: AbortSignal;
+}): Promise<AIResponse> {
+  const { messages, settings = {}, operation, signal } = options;
+  
+  // Merge with default settings
+  const mergedSettings: AISettings = {
+    provider: 'openai',
+    model: 'gpt-3.5-turbo',
+    temperature: 0.7,
+    maxTokens: 1000,
+    apiKey: '',
+    redactPII: false,
+    ...getStoredSettings(),
+    ...settings,
+  };
 
   // Get the provider
   const provider = getProvider(mergedSettings.provider);

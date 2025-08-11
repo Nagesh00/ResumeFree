@@ -21,7 +21,7 @@ import {
   User,
   Crown
 } from 'lucide-react';
-import { ThemeManager, TemplateConfig, TEMPLATES } from '../../../lib/theme/theme-system';
+import { ThemeManager, TemplateConfig, TEMPLATES } from '../../lib/theme/theme-system';
 import { Resume } from '../../../lib/schema/resume';
 import { RootState } from '../../../store';
 
@@ -475,3 +475,5 @@ export const TemplateComparison: React.FC<{
     </div>
   );
 };
+
+export default TemplatePicker;

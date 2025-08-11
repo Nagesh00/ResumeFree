@@ -3,7 +3,8 @@
  * As specified in original requirements: PDF.js + heuristics + LLM + Zod validation
  */
 
-import { Resume, ResumeSchema, createEmptyResume } from '../schema/resume';
+import { Resume, ResumeSchema } from '../schema/resume';
+import { validateResume } from '../schema/enhanced-resume';
 import { runAI } from '../ai/run';
 
 export interface AdvancedParseResult {
