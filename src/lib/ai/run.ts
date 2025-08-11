@@ -1,53 +1,136 @@
-import { getProvider } from '../providers';
-import { 
-  AIMessage, 
-  AIResponse, 
-  AIProviderError, 
-  AISettings,
-  AIOperation 
-} from './types';
+/**
+ * AI Provider Abstraction Layer
+ * Unified interface for multiple AI providers as per original requirements
+ */
 
-// Main AI runner function - provider-agnostic
-export async function runAI(options: {
+import { openAIProvider } from '../providers/openai';
+import { anthropicProvider } from '../providers/anthropic';
+import { googleProvider } from '../providers/google';
+import { azureProvider } from '../providers/azure';
+import { ollamaProvider } from '../providers/ollama';
+
+export type AIMessage = { 
+  role: 'system' | 'user' | 'assistant'; 
+  content: string; 
+};
+
+export interface AIResponse { 
+  text: string; 
+  usage?: { 
+    input: number; 
+    output: number; 
+  };
+}
+
+export interface AIProvider {
+  name: string;
+  models: string[];
+  run: (opts: {
+    apiKey: string;
+    model: string;
+    messages: AIMessage[];
+    temperature?: number;
+    maxTokens?: number;
+    signal?: AbortSignal;
+  }) => Promise<AIResponse>;
+}
+
+export interface RunAIOptions {
+  provider: 'openai' | 'anthropic' | 'google' | 'azure' | 'ollama';
+  model: string;
   messages: AIMessage[];
-  operation?: AIOperation;
-  settings?: Partial<AISettings>;
-  signal?: AbortSignal;
-  provider?: string;
-  apiKey?: string;
-  model?: string;
+  apiKey: string;
   temperature?: number;
   maxTokens?: number;
-}): Promise<AIResponse> {
-  const { messages, operation, settings = {}, signal, provider: providerName, apiKey, model, temperature, maxTokens } = options;
+  signal?: AbortSignal;
+}
+
+// Provider registry
+const providers: Record<string, AIProvider> = {
+  openai: openAIProvider,
+  anthropic: anthropicProvider,
+  google: googleProvider,
+  azure: azureProvider,
+  ollama: ollamaProvider,
+};
+
+/**
+ * Unified AI runner - routes to specific provider
+ */
+export async function runAI(options: RunAIOptions): Promise<AIResponse> {
+  const { provider, ...providerOptions } = options;
   
-  // Get settings from localStorage or use defaults
-  const defaultSettings: AISettings = {
-    provider: providerName || 'perplexity',
-    model: model || 'llama-3.1-sonar-small-128k-online',
-    apiKey: apiKey || '',
-    temperature: temperature || 0.2,
-    maxTokens: maxTokens || 2048,
-    redactPII: false,
-    offlineOnly: false,
+  const aiProvider = providers[provider];
+  if (!aiProvider) {
+    throw new Error(`Unsupported AI provider: ${provider}`);
+  }
+
+  // Add timeout protection
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+  
+  try {
+    const signal = options.signal || controller.signal;
+    const response = await aiProvider.run({
+      ...providerOptions,
+      signal,
+    });
+    
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('AI request timed out');
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Get available models for a provider
+ */
+export function getProviderModels(provider: string): string[] {
+  const aiProvider = providers[provider];
+  return aiProvider?.models || [];
+}
+
+/**
+ * Check if provider is available (has API key)
+ */
+export function isProviderAvailable(provider: string, apiKey?: string): boolean {
+  return Boolean(providers[provider] && (apiKey || provider === 'ollama'));
+}
+
+/**
+ * Validate AI provider configuration
+ */
+export function validateProviderConfig(provider: string, apiKey: string, model: string): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (!providers[provider]) {
+    errors.push(`Provider '${provider}' is not supported`);
+  }
+  
+  if (!apiKey && provider !== 'ollama') {
+    errors.push('API key is required');
+  }
+  
+  const availableModels = getProviderModels(provider);
+  if (!availableModels.includes(model)) {
+    errors.push(`Model '${model}' is not available for provider '${provider}'`);
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors,
   };
-
-  const mergedSettings = { ...defaultSettings, ...getStoredSettings(), ...settings };
-  
-  // Validate settings
-  if (!mergedSettings.apiKey && mergedSettings.provider !== 'ollama') {
-    throw new AIProviderError(
-      'API key is required for this provider',
-      mergedSettings.provider
-    );
-  }
-
-  if (mergedSettings.offlineOnly && mergedSettings.provider !== 'ollama') {
-    throw new AIProviderError(
-      'Offline mode only supports local providers',
-      mergedSettings.provider
-    );
-  }
+}
 
   // Get the provider
   const provider = getProvider(mergedSettings.provider);
