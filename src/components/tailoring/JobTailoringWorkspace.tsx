@@ -6,14 +6,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../lib/store';
+import { useSelector } from 'react-redux';
+import { RootState, useAppDispatch } from '../../lib/store';
 import { updateResume } from '../../lib/store/resumeSlice';
 import { 
   setJobDescription, 
   generateSuggestions, 
   applySuggestion, 
-  revertChange 
+  revertChange,
+  fetchJobFromUrl,
+  clearAnalysis,
+  applyAllSuggestions,
+  rejectAllSuggestions,
+  rejectSuggestion,
+  revertSuggestion
 } from '../../lib/store/jobTailoringSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -29,79 +35,65 @@ import {
   CheckCircle, 
   XCircle,
   ArrowRight,
-  RotateCcw 
+  RotateCcw,
+  Tags,
+  BarChart3,
+  Settings,
+  Check,
+  X,
+  Download,
+  Trash2,
+  CheckSquare
 } from 'lucide-react';
 import { DiffView } from './DiffView';
 import { KeywordCloud } from './KeywordCloud';
-import { runAI } from '../../../lib/ai/run';
 import { extractJobKeywords, calculateATSScore, generateATSSuggestions } from '../../lib/ats/keyword-extract';
 import { toast } from 'react-hot-toast';
 
-interface TailoringSuggestion {
-  id: string;
-  section: string;
-  currentText: string;
-  proposedText: string;
-  rationale: string;
-  keywordHits: string[];
-  confidence: number;
-  applied: boolean;
-}
-
 export default function JobTailoringWorkspace() {
-  const dispatch = useDispatch();
-  const { currentResume } = useSelector((state: RootState) => state.resume);
-  const { jobDescription, suggestions, isGenerating } = useSelector((state: RootState) => state.tailoring);
+  const dispatch = useAppDispatch();
+  const currentResume = useSelector((state: RootState) => state.resume.currentResume);
+  const { 
+    jobDescription, 
+    jobUrl: stateJobUrl,
+    suggestions, 
+    isAnalyzing,
+    isFetchingJob,
+    atsScore,
+    keywords,
+    error 
+  } = useSelector((state: RootState) => state.jobTailoring);
   
   const [jobUrl, setJobUrl] = useState('');
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [atsScore, setAtsScore] = useState(0);
-  const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState('openai');
+
+  // Derived state
+  const isExtracting = isFetchingJob;
+  const isGenerating = isAnalyzing;
 
   // Extract job description from URL
   const extractFromUrl = async () => {
-    if (!jobUrl) return;
-    
-    setIsExtracting(true);
+    if (!jobUrl) {
+      toast.error('Please enter a job URL');
+      return;
+    }
+
     try {
-      // Fetch webpage content
-      const response = await fetch('/api/extract-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: jobUrl })
-      });
-      
-      if (!response.ok) throw new Error('Failed to extract job description');
-      
-      const { jobDescription: extractedJD } = await response.json();
-      dispatch(setJobDescription(extractedJD));
-      toast.success('Job description extracted successfully!');
+      dispatch(fetchJobFromUrl(jobUrl));
     } catch (error) {
       toast.error('Failed to extract job description from URL');
-    } finally {
-      setIsExtracting(false);
     }
   };
 
-  // Analyze job description for keywords
-  useEffect(() => {
-    if (jobDescription) {
-      const extractedKeywords = extractJobKeywords(jobDescription);
-      setKeywords(extractedKeywords);
-      
-      if (currentResume) {
-        const score = calculateATSScore(currentResume, extractedKeywords);
-        setAtsScore(score.score);
-        setMissingKeywords(score.missingKeywords);
-      }
-    }
-  }, [jobDescription, currentResume]);
-
   // Generate AI suggestions
   const handleGenerateSuggestions = async () => {
-    if (!jobDescription || !currentResume) {
-      toast.error('Please provide both job description and resume');
+    if (!jobDescription.trim()) {
+      toast.error('Please enter a job description');
+      return;
+    }
+    
+    if (!currentResume) {
+      toast.error('No resume found. Please create or upload a resume first.');
       return;
     }
 
@@ -109,28 +101,21 @@ export default function JobTailoringWorkspace() {
       dispatch(generateSuggestions({ 
         resume: currentResume, 
         jobDescription,
-        provider: 'openai' // TODO: Get from settings
+        provider: selectedProvider
       }));
     } catch (error) {
       toast.error('Failed to generate suggestions');
     }
   };
 
-  // Apply suggestion
-  const handleApplySuggestion = (suggestion: TailoringSuggestion) => {
-    dispatch(applySuggestion(suggestion.id));
-    
-    // Update resume with suggestion
-    const updatedResume = { ...currentResume };
-    // TODO: Apply the specific changes based on section
-    
-    dispatch(updateResume(updatedResume));
+  // Handle suggestion actions
+  const handleApplySuggestion = (suggestionId: string) => {
+    dispatch(applySuggestion(suggestionId));
     toast.success('Suggestion applied!');
   };
 
-  // Revert suggestion
-  const handleRevertSuggestion = (suggestion: TailoringSuggestion) => {
-    dispatch(revertChange(suggestion.id));
+  const handleRevertSuggestion = (suggestionId: string) => {
+    dispatch(revertChange(suggestionId));
     toast.success('Change reverted!');
   };
 
@@ -140,13 +125,52 @@ export default function JobTailoringWorkspace() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4">Job Tailoring Workspace</h1>
           <p className="text-xl text-muted-foreground">
-            Customize your resume for specific job opportunities
+            Customize your resume for specific job opportunities with AI-powered analysis
           </p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800">{error}</p>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Panel: Job Description Input */}
           <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="h-5 w-5" />
+                  Job URL Extraction
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Paste job posting URL..."
+                    value={jobUrl}
+                    onChange={(e) => setJobUrl(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={extractFromUrl}
+                    disabled={isExtracting || !jobUrl}
+                    variant="outline"
+                  >
+                    {isExtracting ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Extract job description from LinkedIn, Indeed, or other job sites
+                </p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -155,96 +179,118 @@ export default function JobTailoringWorkspace() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* URL Extractor */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Extract from URL</label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Paste job posting URL..."
-                      value={jobUrl}
-                      onChange={(e) => setJobUrl(e.target.value)}
-                    />
-                    <Button 
-                      onClick={extractFromUrl}
-                      disabled={isExtracting || !jobUrl}
-                      size="icon"
-                    >
-                      {isExtracting ? (
-                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                      ) : (
-                        <Link className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                <Textarea
+                  placeholder="Paste or type the job description here..."
+                  value={jobDescription}
+                  onChange={(e) => dispatch(setJobDescription(e.target.value))}
+                  className="min-h-[300px] resize-y"
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={selectedProvider}
+                    onChange={(e) => setSelectedProvider(e.target.value)}
+                    className="px-3 py-2 border rounded-md"
+                  >
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="google">Google</option>
+                  </select>
+                  <Button 
+                    onClick={handleGenerateSuggestions}
+                    disabled={isGenerating || !jobDescription}
+                    className="flex-1"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Generate Suggestions
+                      </>
+                    )}
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Manual Input */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Or paste manually</label>
-                  <Textarea
-                    placeholder="Paste the job description here..."
-                    value={jobDescription}
-                    onChange={(e) => dispatch(setJobDescription(e.target.value))}
-                    rows={12}
-                  />
-                </div>
-
+            {/* Action Buttons */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
                 <Button 
-                  onClick={handleGenerateSuggestions}
-                  disabled={isGenerating || !jobDescription}
-                  className="w-full"
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => dispatch(applyAllSuggestions())}
+                  disabled={suggestions.length === 0}
                 >
-                  {isGenerating ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
-                      Generating Suggestions...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Generate AI Suggestions
-                    </>
-                  )}
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Apply All Suggestions
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => dispatch(rejectAllSuggestions())}
+                  disabled={suggestions.length === 0}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Reject All
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => dispatch(clearAnalysis())}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear Analysis
                 </Button>
               </CardContent>
             </Card>
           </div>
 
-          {/* Center Panel: Diff View */}
+          {/* Center Panel: AI Suggestions & Diff View */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ArrowRight className="h-5 w-5" />
-                  Suggested Changes
+                  AI Suggestions ({suggestions.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {suggestions.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Generate suggestions to see proposed changes</p>
+                  <div className="text-center py-8">
+                    <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
+                      Generate suggestions to see AI-powered improvements
+                    </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
                     {suggestions.map((suggestion) => (
                       <div key={suggestion.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h4 className="font-medium capitalize">{suggestion.section}</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Progress value={suggestion.confidence} className="w-20 h-2" />
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline">{suggestion.section}</Badge>
                               <span className="text-sm text-muted-foreground">
                                 {suggestion.confidence}%
                               </span>
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            {suggestion.applied ? (
+                            {suggestion.accepted === true ? (
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => handleRevertSuggestion(suggestion)}
+                                onClick={() => handleRevertSuggestion(suggestion.id)}
                               >
                                 <RotateCcw className="h-4 w-4 mr-1" />
                                 Revert
@@ -252,7 +298,7 @@ export default function JobTailoringWorkspace() {
                             ) : (
                               <Button 
                                 size="sm"
-                                onClick={() => handleApplySuggestion(suggestion)}
+                                onClick={() => handleApplySuggestion(suggestion.id)}
                               >
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 Apply
@@ -260,19 +306,17 @@ export default function JobTailoringWorkspace() {
                             )}
                           </div>
                         </div>
-
+                        
+                        <p className="text-sm mb-3">{suggestion.rationale}</p>
+                        
                         <DiffView
                           oldText={suggestion.currentText}
                           newText={suggestion.proposedText}
                         />
-
-                        <div className="mt-3 p-2 bg-muted rounded text-sm">
-                          <strong>Rationale:</strong> {suggestion.rationale}
-                        </div>
-
-                        {suggestion.keywordHits.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {suggestion.keywordHits.map((keyword) => (
+                        
+                        {suggestion.keywordHits && suggestion.keywordHits.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {suggestion.keywordHits.map((keyword: string) => (
                               <Badge key={keyword} variant="secondary" className="text-xs">
                                 {keyword}
                               </Badge>
@@ -299,9 +343,9 @@ export default function JobTailoringWorkspace() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-4xl font-bold mb-2">
-                    {atsScore}%
+                    {atsScore ? Math.round(atsScore.overall || 0) : 0}%
                   </div>
-                  <Progress value={atsScore} className="w-full" />
+                  <Progress value={atsScore ? Math.round(atsScore.overall || 0) : 0} className="w-full" />
                   <p className="text-sm text-muted-foreground mt-2">
                     Applicant Tracking System Compatibility
                   </p>
@@ -310,20 +354,42 @@ export default function JobTailoringWorkspace() {
                 {keywords.length > 0 && (
                   <div>
                     <h4 className="font-medium mb-3">Key Terms</h4>
-                    <KeywordCloud keywords={keywords} />
-                  </div>
-                )}
-
-                {missingKeywords.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-3 text-orange-600">Missing Keywords</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {missingKeywords.map((keyword) => (
-                        <Badge key={keyword} variant="destructive" className="text-xs">
+                    <div className="flex flex-wrap gap-1">
+                      {keywords.slice(0, 20).map((keyword) => (
+                        <Badge key={keyword} variant="outline" className="text-xs">
                           {keyword}
                         </Badge>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Missing keywords section - we'll derive this from analysis */}
+                {atsScore && atsScore.recommendations && atsScore.recommendations.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3 text-red-600">Improvement Areas</h4>
+                    <ul className="space-y-1 text-sm">
+                      {atsScore.recommendations.slice(0, 3).map((rec: string, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0" />
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {atsScore?.recommendations && (
+                  <div>
+                    <h4 className="font-medium mb-3">Recommendations</h4>
+                    <ul className="space-y-1 text-sm">
+                      {atsScore.recommendations.slice(0, 5).map((rec, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </CardContent>
@@ -331,27 +397,15 @@ export default function JobTailoringWorkspace() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Optimization Tips</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Keyword Analysis
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span>Use exact keywords from job description</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span>Include relevant technical skills</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span>Quantify achievements with numbers</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span>Use industry-standard terminology</span>
-                  </div>
-                </div>
+                <KeywordCloud 
+                  keywords={keywords}
+                />
               </CardContent>
             </Card>
           </div>

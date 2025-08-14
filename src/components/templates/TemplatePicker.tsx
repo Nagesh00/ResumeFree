@@ -22,8 +22,8 @@ import {
   Crown
 } from 'lucide-react';
 import { ThemeManager, TemplateConfig, TEMPLATES } from '../../lib/theme/theme-system';
-import { Resume } from '../../../lib/schema/resume';
-import { RootState } from '../../../store';
+import { Resume } from '../../lib/schema/resume';
+import { RootState } from '../../lib/store';
 
 interface TemplatePickerProps {
   onTemplateSelect: (templateId: string) => void;
@@ -55,28 +55,28 @@ const TemplatePreviewCard: React.FC<{
     <div 
       className="template-preview bg-white border rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
       style={{ 
-        backgroundColor: template.colors.background,
-        borderColor: isSelected ? template.colors.primary : '#e5e7eb',
+        backgroundColor: template.tokens.colors.background,
+        borderColor: isSelected ? template.tokens.colors.primary : '#e5e7eb',
         borderWidth: isSelected ? '2px' : '1px',
       }}
     >
       {/* Preview Header */}
       <div 
         className="p-4 border-b"
-        style={{ borderColor: template.colors.border }}
+        style={{ borderColor: template.tokens.colors.border }}
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div 
               className="p-2 rounded-lg"
-              style={{ backgroundColor: template.colors.accent + '20' }}
+              style={{ backgroundColor: template.tokens.colors.accent + '20' }}
             >
               {getTemplateIcon(template.id)}
             </div>
             <div>
               <h3 
                 className="font-semibold text-sm"
-                style={{ color: template.colors.primary }}
+                style={{ color: template.tokens.colors.primary }}
               >
                 {template.name}
               </h3>
@@ -95,15 +95,15 @@ const TemplatePreviewCard: React.FC<{
           <div 
             className="font-semibold text-center"
             style={{ 
-              color: template.colors.primary,
-              fontSize: template.spacing.headerSize * 0.4 + 'px'
+              color: template.tokens.colors.primary,
+              fontSize: template.tokens.typography.fontSize.lg
             }}
           >
             {resume.name || 'Your Name'}
           </div>
           <div 
             className="text-center opacity-75"
-            style={{ color: template.colors.text }}
+            style={{ color: template.tokens.colors.text }}
           >
             {resume.contact.email || 'email@example.com'}
           </div>
@@ -113,8 +113,8 @@ const TemplatePreviewCard: React.FC<{
             <div 
               className="font-medium pb-1 border-b"
               style={{ 
-                color: template.colors.accent,
-                borderColor: template.colors.border
+                color: template.tokens.colors.accent,
+                borderColor: template.tokens.colors.border
               }}
             >
               EXPERIENCE
@@ -122,14 +122,14 @@ const TemplatePreviewCard: React.FC<{
             <div className="space-y-1">
               <div 
                 className="font-medium"
-                style={{ color: template.colors.primary }}
+                style={{ color: template.tokens.colors.primary }}
               >
                 {resume.experiences[0]?.title || 'Job Title'}
               </div>
-              <div style={{ color: template.colors.textLight }}>
+              <div style={{ color: template.tokens.colors.textLight }}>
                 {resume.experiences[0]?.company || 'Company'} | 2021 - Present
               </div>
-              <div style={{ color: template.colors.text }}>
+              <div style={{ color: template.tokens.colors.text }}>
                 • Key achievement or responsibility
               </div>
             </div>
@@ -140,18 +140,37 @@ const TemplatePreviewCard: React.FC<{
       {/* Template Features */}
       <div className="p-3">
         <div className="flex flex-wrap gap-1">
-          {template.features.map((feature, index) => (
+          <span
+            className="px-2 py-1 text-xs rounded-full"
+            style={{
+              backgroundColor: template.tokens.colors.accent + '20',
+              color: template.tokens.colors.accent,
+            }}
+          >
+            {template.category}
+          </span>
+          {template.customization.allowColorChange && (
             <span
-              key={index}
               className="px-2 py-1 text-xs rounded-full"
               style={{
-                backgroundColor: template.colors.accent + '20',
-                color: template.colors.accent,
+                backgroundColor: template.tokens.colors.accent + '20',
+                color: template.tokens.colors.accent,
               }}
             >
-              {feature}
+              Custom Colors
             </span>
-          ))}
+          )}
+          {template.customization.allowFontChange && (
+            <span
+              className="px-2 py-1 text-xs rounded-full"
+              style={{
+                backgroundColor: template.tokens.colors.accent + '20',
+                color: template.tokens.colors.accent,
+              }}
+            >
+              Custom Fonts
+            </span>
+          )}
         </div>
       </div>
 
@@ -208,9 +227,12 @@ const TemplateCustomizer: React.FC<{
             <label className="block text-sm font-medium mb-2">Primary Color</label>
             <input
               type="color"
-              value={localTemplate.colors.primary}
+              value={localTemplate.tokens.colors.primary}
               onChange={(e) => updateTemplate({
-                colors: { ...localTemplate.colors, primary: e.target.value }
+                tokens: { 
+                  ...localTemplate.tokens,
+                  colors: { ...localTemplate.tokens.colors, primary: e.target.value }
+                }
               })}
               className="w-full h-10 rounded border"
             />
@@ -220,9 +242,12 @@ const TemplateCustomizer: React.FC<{
             <label className="block text-sm font-medium mb-2">Accent Color</label>
             <input
               type="color"
-              value={localTemplate.colors.accent}
+              value={localTemplate.tokens.colors.accent}
               onChange={(e) => updateTemplate({
-                colors: { ...localTemplate.colors, accent: e.target.value }
+                tokens: { 
+                  ...localTemplate.tokens,
+                  colors: { ...localTemplate.tokens.colors, accent: e.target.value }
+                }
               })}
               className="w-full h-10 rounded border"
             />
@@ -241,9 +266,12 @@ const TemplateCustomizer: React.FC<{
           <div>
             <label className="block text-sm font-medium mb-2">Header Font</label>
             <select
-              value={localTemplate.fonts.heading}
+              value={localTemplate.tokens.typography.headingFont}
               onChange={(e) => updateTemplate({
-                fonts: { ...localTemplate.fonts, heading: e.target.value }
+                tokens: { 
+                  ...localTemplate.tokens,
+                  typography: { ...localTemplate.tokens.typography, headingFont: e.target.value }
+                }
               })}
               className="w-full px-3 py-2 border rounded-lg"
             >
@@ -258,9 +286,12 @@ const TemplateCustomizer: React.FC<{
           <div>
             <label className="block text-sm font-medium mb-2">Body Font</label>
             <select
-              value={localTemplate.fonts.body}
+              value={localTemplate.tokens.typography.fontFamily}
               onChange={(e) => updateTemplate({
-                fonts: { ...localTemplate.fonts, body: e.target.value }
+                tokens: { 
+                  ...localTemplate.tokens,
+                  typography: { ...localTemplate.tokens.typography, fontFamily: e.target.value }
+                }
               })}
               className="w-full px-3 py-2 border rounded-lg"
             >
@@ -283,35 +314,33 @@ const TemplateCustomizer: React.FC<{
         
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Header Size: {localTemplate.spacing.headerSize}px
-            </label>
-            <input
-              type="range"
-              min="20"
-              max="40"
-              value={localTemplate.spacing.headerSize}
+            <label className="block text-sm font-medium mb-2">Section Spacing</label>
+            <select
+              value={template.layout.sectionSpacing}
               onChange={(e) => updateTemplate({
-                spacing: { ...localTemplate.spacing, headerSize: parseInt(e.target.value) }
+                layout: { ...localTemplate.layout, sectionSpacing: e.target.value as any }
               })}
-              className="w-full"
-            />
+              className="w-full px-3 py-2 border rounded-lg"
+            >
+              <option value="compact">Compact</option>
+              <option value="normal">Normal</option>
+              <option value="spacious">Spacious</option>
+            </select>
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Section Spacing: {localTemplate.spacing.sectionGap}px
-            </label>
-            <input
-              type="range"
-              min="16"
-              max="32"
-              value={localTemplate.spacing.sectionGap}
+            <label className="block text-sm font-medium mb-2">Header Style</label>
+            <select
+              value={template.layout.headerStyle}
               onChange={(e) => updateTemplate({
-                spacing: { ...localTemplate.spacing, sectionGap: parseInt(e.target.value) }
+                layout: { ...localTemplate.layout, headerStyle: e.target.value as any }
               })}
-              className="w-full"
-            />
+              className="w-full px-3 py-2 border rounded-lg"
+            >
+              <option value="minimal">Minimal</option>
+              <option value="accent">Accent</option>
+              <option value="full">Full</option>
+            </select>
           </div>
         </div>
       </div>
@@ -347,22 +376,23 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({
 
   const handleTemplateSelect = (templateId: string) => {
     onTemplateSelect(templateId);
-    themeManager.applyTemplate(templateId);
+    themeManager.switchTemplate(templateId);
   };
 
   const handleCustomize = (templateId: string, updates: Partial<TemplateConfig>) => {
-    const baseTemplate = TEMPLATES[templateId];
+    const baseTemplate = TEMPLATES.find(t => t.id === templateId);
+    if (!baseTemplate) return;
+    
     const customized = { ...baseTemplate, ...updates };
     
     setCustomizedTemplates(prev => ({
       ...prev,
       [templateId]: customized
     }));
-    
-    themeManager.applyCustomTemplate(customized);
-  };
 
-  return (
+    // Note: ThemeManager doesn't have a method to apply custom templates
+    // You might want to extend ThemeManager or handle this differently
+  };  return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -403,7 +433,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({
       {/* Customization Panel */}
       {showCustomizer && selectedTemplate && (
         <TemplateCustomizer
-          template={customizedTemplates[selectedTemplate] || TEMPLATES[selectedTemplate]}
+          template={customizedTemplates[selectedTemplate] || TEMPLATES.find(t => t.id === selectedTemplate)!}
           onCustomize={(updates) => handleCustomize(selectedTemplate, updates)}
         />
       )}
@@ -446,7 +476,8 @@ export const TemplateComparison: React.FC<{
       
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {templates.map((templateId) => {
-          const template = TEMPLATES[templateId];
+          const template = TEMPLATES.find(t => t.id === templateId);
+          if (!template) return null;
           return (
             <div key={templateId} className="space-y-3">
               <TemplatePreviewCard
@@ -460,12 +491,26 @@ export const TemplateComparison: React.FC<{
               <div className="p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium mb-2">Template Features</h4>
                 <ul className="space-y-1 text-sm text-gray-600">
-                  {template.features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3 h-3 text-green-600" />
+                    {template.category} style
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3 h-3 text-green-600" />
+                    {template.layout.columns} column layout
+                  </li>
+                  {template.customization.allowColorChange && (
+                    <li className="flex items-center gap-2">
                       <Check className="w-3 h-3 text-green-600" />
-                      {feature}
+                      Customizable colors
                     </li>
-                  ))}
+                  )}
+                  {template.customization.allowFontChange && (
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3 h-3 text-green-600" />
+                      Customizable fonts
+                    </li>
+                  )}
                 </ul>
               </div>
             </div>

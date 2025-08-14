@@ -287,3 +287,30 @@ function generateRecommendations(resume: Resume, missingKeywords: string[]): str
   
   return recommendations;
 }
+
+/**
+ * Generate ATS improvement suggestions
+ */
+export function generateATSSuggestions(resume: Resume, jobDescription: string): string[] {
+  const jobKeywords = extractJobKeywords(jobDescription);
+  const atsScore = calculateATSScore(resume, jobKeywords);
+  
+  const suggestions: string[] = [];
+  
+  // Keyword suggestions
+  if (atsScore.missingKeywords.length > 0) {
+    suggestions.push(`Add missing keywords: ${atsScore.missingKeywords.slice(0, 3).join(', ')}`);
+  }
+  
+  // Format suggestions
+  if (atsScore.breakdown.formatCompliance < 80) {
+    suggestions.push('Improve format compliance: use standard headings and bullet points');
+  }
+  
+  // Content suggestions
+  if (atsScore.breakdown.contentQuality < 70) {
+    suggestions.push('Enhance content quality with more quantified achievements');
+  }
+  
+  return [...suggestions, ...atsScore.recommendations];
+}

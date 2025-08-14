@@ -53,15 +53,32 @@ const initialState: JobTailoringState = {
 export const analyzeJobDescription = createAsyncThunk(
   'jobTailoring/analyzeJobDescription',
   async (
-    { resume, jobDescription }: { resume: Resume; jobDescription: string },
+    { resume, jobDescription, provider = 'openai' }: { 
+      resume: Resume; 
+      jobDescription: string; 
+      provider?: string;
+    },
     { signal, rejectWithValue }
   ) => {
     try {
+      // Get API key from localStorage or environment
+      const apiKey = localStorage.getItem(`${provider}-api-key`) || 
+                     localStorage.getItem(`${provider}_api_key`) ||
+                     process.env[`${provider.toUpperCase()}_API_KEY`];
+      
+      if (!apiKey) {
+        throw new Error(`No API key found for ${provider}. Please configure your API key in Settings.`);
+      }
+
       // Extract keywords
       const keywordPrompt = buildKeywordExtractionPrompt(jobDescription);
       const keywordResponse = await runAI({
+        provider: provider as any,
+        model: getDefaultModel(provider),
         messages: keywordPrompt,
-        operation: 'extract-keywords',
+        apiKey,
+        temperature: 0.3,
+        maxTokens: 2000,
         signal,
       });
       
@@ -70,8 +87,12 @@ export const analyzeJobDescription = createAsyncThunk(
       // Generate tailoring suggestions
       const tailorPrompt = buildTailorPrompt(resume, jobDescription);
       const tailorResponse = await runAI({
+        provider: provider as any,
+        model: getDefaultModel(provider),
         messages: tailorPrompt,
-        operation: 'tailor-resume',
+        apiKey,
+        temperature: 0.5,
+        maxTokens: 3000,
         signal,
       });
       
@@ -80,20 +101,25 @@ export const analyzeJobDescription = createAsyncThunk(
       // Calculate ATS score
       const atsPrompt = buildATSScorePrompt(resume, jobDescription);
       const atsResponse = await runAI({
+        provider: provider as any,
+        model: getDefaultModel(provider),
         messages: atsPrompt,
-        operation: 'score-ats',
+        apiKey,
+        temperature: 0.2,
+        maxTokens: 1500,
         signal,
       });
       
       const atsData = JSON.parse(atsResponse.text);
       
       return {
-        keywords: keywordData.keywords,
+        keywords: keywordData.keywords || [],
         analysis: keywordData.analysis,
-        suggestions: tailorData.suggestions,
+        suggestions: tailorData.suggestions || [],
         atsScore: atsData,
       };
     } catch (error) {
+      console.error('Job analysis failed:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Analysis failed');
     }
   }
@@ -103,18 +129,51 @@ export const fetchJobFromUrl = createAsyncThunk(
   'jobTailoring/fetchJobFromUrl',
   async (url: string, { rejectWithValue }) => {
     try {
-      // This would need a backend service or browser extension
-      // For now, we'll return a placeholder
+      // Client-side URL extraction (GitHub Pages compatible)
+      // Note: Limited by CORS policies for direct URL fetching
+      
+      let jobDescription = '';
+      let companyName = '';
+      let jobTitle = '';
+      
+      // Provide guidance for manual copying since CORS prevents direct fetching
+      if (url.includes('linkedin.com')) {
+        jobDescription = 'LinkedIn job detected. Please copy and paste the job description manually due to browser security restrictions.';
+        companyName = 'LinkedIn';
+        jobTitle = 'Job from LinkedIn';
+      } else if (url.includes('indeed.com')) {
+        jobDescription = 'Indeed job detected. Please copy and paste the job description manually due to browser security restrictions.';
+        companyName = 'Indeed';
+        jobTitle = 'Job from Indeed';
+      } else {
+        jobDescription = 'Job URL detected. Please copy and paste the job description manually since direct URL extraction is limited in browser environments.';
+        companyName = 'External Site';
+        jobTitle = 'Job from URL';
+      }
+
       return {
-        jobDescription: 'Job description fetched from URL would go here',
-        companyName: 'Company Name',
-        jobTitle: 'Job Title',
+        jobDescription,
+        companyName,
+        jobTitle,
       };
     } catch (error) {
-      return rejectWithValue('Failed to fetch job description');
+      console.error('Failed to fetch job from URL:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch job description');
     }
   }
 );
+
+// Helper function to get default model for provider
+function getDefaultModel(provider: string): string {
+  const modelMap: Record<string, string> = {
+    openai: 'gpt-4',
+    anthropic: 'claude-3-sonnet-20240229',
+    google: 'gemini-pro',
+    azure: 'gpt-4',
+    ollama: 'llama2',
+  };
+  return modelMap[provider] || 'gpt-3.5-turbo';
+}
 
 const jobTailoringSlice = createSlice({
   name: 'jobTailoring',

@@ -18,8 +18,8 @@ const nextConfig = {
   images: {
     domains: [],
   },
-  // Enable static exports for GitHub Pages if needed
-  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  // Enable static exports for GitHub Pages
+  output: 'export',
   trailingSlash: true,
   distDir: 'out',
 };
