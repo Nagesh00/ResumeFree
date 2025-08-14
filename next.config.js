@@ -17,11 +17,13 @@ const nextConfig = {
   },
   images: {
     domains: [],
+    unoptimized: true,
   },
   // Enable static exports for GitHub Pages
   output: 'export',
   trailingSlash: true,
   distDir: 'out',
+  skipTrailingSlashRedirect: true,
 };
 
 module.exports = nextConfig;
