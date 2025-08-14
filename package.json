@@ -9,8 +9,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "export": "next build && next export"
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "next": "^14.0.0",
