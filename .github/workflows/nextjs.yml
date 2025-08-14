@@ -1,4 +1,4 @@
-# Deploy AI Resume Builder with fallback strategy
+# Build and deploy the actual AI Resume Builder Next.js app
 name: Deploy AI Resume Builder
 
 on:
@@ -30,204 +30,33 @@ jobs:
           
       - name: Install dependencies
         run: |
-          npm ci || npm install
-          npm install @radix-ui/react-tabs @radix-ui/react-label @radix-ui/react-slot class-variance-authority --save
+          npm ci
+          npm install @radix-ui/react-tabs @radix-ui/react-label @radix-ui/react-slot class-variance-authority
           
-      - name: Create output directory
-        run: mkdir -p out
-        
-      - name: Try Next.js build
+      - name: Fix import issues
         run: |
-          echo "Attempting Next.js build..."
-          if npm run build; then
-            echo "✅ Next.js build successful"
-            if [ ! -f "out/index.html" ]; then
-              echo "⚠️  No index.html generated, creating fallback"
-              npm run build:fallback || echo "Fallback build failed, using static version"
-            fi
-          else
-            echo "❌ Next.js build failed, creating static version"
-            npm run build:static || echo "Creating manual static version"
-          fi
-        continue-on-error: true
-        
-      - name: Ensure deployment content exists
+          # Ensure all UI components are available
+          npm list @radix-ui/react-tabs || npm install @radix-ui/react-tabs
+          
+      - name: Build Next.js application
         run: |
-          if [ ! -f "out/index.html" ]; then
-            echo "Creating advanced AI resume builder static version..."
-            cat > out/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>ResumeAI - Advanced AI Resume Builder</title>
-              <script src="https://cdn.tailwindcss.com"></script>
-              <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-              <style>
-                  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-                  .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-                  .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
-                  .animate-fade-in { animation: fadeIn 0.8s ease-in; }
-                  @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-              </style>
-          </head>
-          <body class="gradient-bg min-h-screen">
-              <!-- Header -->
-              <nav class="glass p-4">
-                  <div class="container mx-auto flex justify-between items-center">
-                      <div class="text-white text-2xl font-bold">🚀 ResumeAI</div>
-                      <div class="space-x-4">
-                          <button onclick="showBuilder()" class="text-white hover:bg-white hover:bg-opacity-20 px-4 py-2 rounded-lg transition-all">Builder</button>
-                          <button onclick="showParser()" class="text-white hover:bg-white hover:bg-opacity-20 px-4 py-2 rounded-lg transition-all">Parser</button>
-                          <button onclick="showSettings()" class="text-white hover:bg-white hover:bg-opacity-20 px-4 py-2 rounded-lg transition-all">AI Settings</button>
-                      </div>
-                  </div>
-              </nav>
-
-              <!-- Main Content -->
-              <div class="container mx-auto px-4 py-16">
-                  <!-- Hero Section -->
-                  <div class="text-center mb-16 animate-fade-in">
-                      <h1 class="text-6xl font-bold text-white mb-6">
-                          Create a <span class="text-yellow-300">professional resume</span> easily
-                      </h1>
-                      <p class="text-xl text-white text-opacity-90 mb-8 max-w-3xl mx-auto">
-                          Advanced AI-powered resume builder with OpenResume.com interface + AI enhancements.
-                          Features include AI content generation, ATS optimization, and job tailoring.
-                      </p>
-                      
-                      <div class="space-y-4 max-w-md mx-auto">
-                          <button onclick="launchBuilder()" class="w-full bg-white text-purple-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-opacity-90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-                              🤖 Launch AI Resume Builder
-                          </button>
-                          <p class="text-white text-opacity-75 text-sm">No sign up required • AI-powered • ATS optimized</p>
-                      </div>
-                  </div>
-
-                  <!-- Advanced Features Grid -->
-                  <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-                      <div class="glass p-6 rounded-xl text-center animate-fade-in">
-                          <div class="text-4xl mb-4">🤖</div>
-                          <h3 class="text-xl font-semibold text-white mb-2">AI Content Generation</h3>
-                          <p class="text-white text-opacity-80">Let AI write compelling resume content based on your experience and target jobs</p>
-                      </div>
-                      
-                      <div class="glass p-6 rounded-xl text-center animate-fade-in">
-                          <div class="text-4xl mb-4">📊</div>
-                          <h3 class="text-xl font-semibold text-white mb-2">ATS Optimization</h3>
-                          <p class="text-white text-opacity-80">Real-time scoring and suggestions to ensure your resume passes ATS systems</p>
-                      </div>
-                      
-                      <div class="glass p-6 rounded-xl text-center animate-fade-in">
-                          <div class="text-4xl mb-4">🎯</div>
-                          <h3 class="text-xl font-semibold text-white mb-2">Job Tailoring</h3>
-                          <p class="text-white text-opacity-80">Customize your resume automatically for specific job descriptions and requirements</p>
-                      </div>
-                      
-                      <div class="glass p-6 rounded-xl text-center animate-fade-in">
-                          <div class="text-4xl mb-4">📄</div>
-                          <h3 class="text-xl font-semibold text-white mb-2">Multiple Formats</h3>
-                          <p class="text-white text-opacity-80">Export to PDF, DOCX, JSON, and other professional formats instantly</p>
-                      </div>
-                  </div>
-
-                  <!-- Interactive Demo -->
-                  <div class="glass p-8 rounded-2xl mb-16">
-                      <h2 class="text-3xl font-bold text-white text-center mb-8">🎨 Interactive AI Resume Builder</h2>
-                      <div class="grid md:grid-cols-2 gap-8">
-                          <div>
-                              <h3 class="text-xl font-semibold text-white mb-4">✨ AI-Powered Features</h3>
-                              <ul class="space-y-2 text-white text-opacity-90">
-                                  <li><i class="fas fa-check text-green-400 mr-2"></i>Smart content suggestions</li>
-                                  <li><i class="fas fa-check text-green-400 mr-2"></i>Industry-specific templates</li>
-                                  <li><i class="fas fa-check text-green-400 mr-2"></i>Real-time ATS scoring</li>
-                                  <li><i class="fas fa-check text-green-400 mr-2"></i>Keyword optimization</li>
-                                  <li><i class="fas fa-check text-green-400 mr-2"></i>Professional formatting</li>
-                              </ul>
-                          </div>
-                          <div>
-                              <h3 class="text-xl font-semibold text-white mb-4">🚀 Advanced Tools</h3>
-                              <div class="space-y-3">
-                                  <button onclick="showTailoring()" class="w-full bg-purple-600 bg-opacity-50 text-white p-3 rounded-lg hover:bg-opacity-70 transition-all">
-                                      🎯 Job Tailoring Assistant
-                                  </button>
-                                  <button onclick="showParser()" class="w-full bg-blue-600 bg-opacity-50 text-white p-3 rounded-lg hover:bg-opacity-70 transition-all">
-                                      📤 Resume Parser & Analyzer
-                                  </button>
-                                  <button onclick="showTemplates()" class="w-full bg-green-600 bg-opacity-50 text-white p-3 rounded-lg hover:bg-opacity-70 transition-all">
-                                      🎨 Professional Templates
-                                  </button>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-
-                  <!-- Status Section -->
-                  <div class="text-center">
-                      <div class="glass p-6 rounded-xl inline-block">
-                          <h3 class="text-2xl font-semibold text-white mb-2">
-                              <i class="fas fa-check-circle text-green-400 mr-2"></i>
-                              Advanced AI Resume Builder Deployed Successfully!
-                          </h3>
-                          <p class="text-white text-opacity-80">Your GitHub repository is working perfectly with all advanced features enabled.</p>
-                      </div>
-                  </div>
-              </div>
-
-              <script>
-                  function launchBuilder() {
-                      showAdvancedDemo();
-                  }
-
-                  function showAdvancedDemo() {
-                      alert('🎉 Advanced AI Resume Builder Features:\n\n🤖 AI Content Generation\n📊 Real-time ATS Scoring\n🎯 Job-Specific Tailoring\n📄 Professional Templates\n💾 Multiple Export Formats\n🔍 Resume Parser & Analysis\n⚙️ AI Model Configuration\n\n✨ Your advanced resume builder is ready!\nThe full Next.js application is being optimized for deployment.');
-                  }
-
-                  function showBuilder() {
-                      alert('🎨 Resume Builder:\n\n• Visual drag-and-drop interface\n• Real-time preview\n• AI writing assistance\n• Professional templates\n• ATS optimization\n\nLaunching advanced builder...');
-                  }
-
-                  function showParser() {
-                      alert('📤 Resume Parser:\n\n• Upload existing resumes\n• Extract structured data\n• Analyze ATS compatibility\n• Identify improvement areas\n• Convert between formats\n\nAdvanced parsing capabilities ready!');
-                  }
-
-                  function showTailoring() {
-                      alert('🎯 Job Tailoring:\n\n• Paste job descriptions\n• AI analyzes requirements\n• Customizes resume content\n• Optimizes keywords\n• Improves matching score\n\nSmart tailoring system activated!');
-                  }
-
-                  function showTemplates() {
-                      alert('🎨 Professional Templates:\n\n• ATS-optimized designs\n• Industry-specific layouts\n• Modern professional styles\n• Customizable themes\n• Mobile-responsive formats\n\nTemplate library loaded!');
-                  }
-
-                  function showSettings() {
-                      alert('⚙️ AI Settings:\n\n• Configure AI models\n• Adjust generation parameters\n• Set preferences\n• Manage API keys\n• Customize behavior\n\nAdvanced AI configuration available!');
-                  }
-
-                  // Add loading animation
-                  document.addEventListener('DOMContentLoaded', function() {
-                      const elements = document.querySelectorAll('.animate-fade-in');
-                      elements.forEach((el, index) => {
-                          el.style.animationDelay = `${index * 0.2}s`;
-                      });
-                  });
-              </script>
-          </body>
-          </html>
-          EOF
-          fi
+          export NODE_OPTIONS="--max-old-space-size=4096"
+          npm run build
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: 1
           
-          # Create additional pages
-          mkdir -p out/resume-builder out/resume-parser out/job-tailoring out/settings
-          
-          # Copy the main page to sub-routes for SPA-like behavior
-          cp out/index.html out/resume-builder/index.html 2>/dev/null || true
-          cp out/index.html out/resume-parser/index.html 2>/dev/null || true
-          cp out/index.html out/job-tailoring/index.html 2>/dev/null || true
-          cp out/index.html out/settings/index.html 2>/dev/null || true
-          
-          echo "Deployment content ready!"
+      - name: Verify build output
+        run: |
+          echo "Build output contents:"
           ls -la out/
+          if [ -f "out/index.html" ]; then
+            echo "✅ Build successful - index.html found"
+            head -20 out/index.html
+          else
+            echo "❌ Build failed - no index.html"
+            exit 1
+          fi
           
       - name: Setup Pages
         uses: actions/configure-pages@v5
