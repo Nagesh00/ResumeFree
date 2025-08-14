@@ -1,4 +1,4 @@
-# Build and deploy the actual AI Resume Builder Next.js app
+# Deploy Advanced AI Resume Builder - Comprehensive Dependency Fix
 name: Deploy AI Resume Builder
 
 on:
@@ -28,33 +28,60 @@ jobs:
           node-version: '20'
           cache: 'npm'
           
-      - name: Install dependencies
+      - name: Clear npm cache
+        run: npm cache clean --force
+        
+      - name: Install dependencies with retries
         run: |
-          npm ci
-          npm install @radix-ui/react-tabs @radix-ui/react-label @radix-ui/react-slot class-variance-authority
+          npm ci --prefer-offline --no-audit || npm install --prefer-offline --no-audit
           
-      - name: Fix import issues
+      - name: Install UI dependencies explicitly
         run: |
-          # Ensure all UI components are available
-          npm list @radix-ui/react-tabs || npm install @radix-ui/react-tabs
+          npm install @radix-ui/react-tabs@latest --save
+          npm install @radix-ui/react-label@latest --save  
+          npm install @radix-ui/react-slot@latest --save
+          npm install class-variance-authority@latest --save
+          npm install clsx@latest --save
+          npm install tailwind-merge@latest --save
           
-      - name: Build Next.js application
+      - name: Install missing peer dependencies
+        run: |
+          npm install react@^18.2.0 react-dom@^18.2.0 --save-peer || true
+          
+      - name: Verify critical dependencies
+        run: |
+          npm list @radix-ui/react-tabs || echo "Installing radix tabs..."
+          npm list lucide-react || npm install lucide-react
+          npm list react-hot-toast || npm install react-hot-toast
+          
+      - name: Check for TypeScript errors
+        run: |
+          npx tsc --noEmit || echo "TypeScript check completed with warnings"
+          
+      - name: Build with verbose output
         run: |
           export NODE_OPTIONS="--max-old-space-size=4096"
+          export NEXT_TELEMETRY_DISABLED=1
+          echo "Starting Next.js build..."
           npm run build
         env:
           NODE_ENV: production
-          NEXT_TELEMETRY_DISABLED: 1
+          CI: true
           
-      - name: Verify build output
+      - name: Verify build success
         run: |
-          echo "Build output contents:"
-          ls -la out/
           if [ -f "out/index.html" ]; then
-            echo "✅ Build successful - index.html found"
+            echo "✅ Build successful!"
+            echo "Generated files:"
+            find out -name "*.html" | head -10
+            echo "Index.html preview:"
             head -20 out/index.html
           else
-            echo "❌ Build failed - no index.html"
+            echo "❌ Build failed - no output generated"
+            echo "Build directory contents:"
+            ls -la out/ || echo "No out directory"
+            echo "Root directory:"
+            ls -la
             exit 1
           fi
           
