@@ -2,6 +2,26 @@ import { runAI } from './run';
 import { Resume } from '../schema/resume';
 import { AIProviderType } from './types';
 
+// Default models for each provider
+const getDefaultModel = (provider: AIProviderType): string => {
+  switch (provider) {
+    case 'openai':
+      return 'gpt-3.5-turbo';
+    case 'anthropic':
+      return 'claude-3-haiku-20240307';
+    case 'google':
+      return 'gemini-pro';
+    case 'azure':
+      return 'gpt-35-turbo';
+    case 'ollama':
+      return 'llama2';
+    case 'perplexity':
+      return 'llama-3-sonar-small-32k-online';
+    default:
+      return 'gpt-3.5-turbo';
+  }
+};
+
 export interface ResumeGenerationOptions {
   section: 'summary' | 'experience' | 'skills' | 'education';
   context: string;
@@ -116,6 +136,7 @@ export async function generateResumeContent(
     // Generate content using AI
     const result = await runAI({
       provider,
+      model: getDefaultModel(provider),
       apiKey: apiKey || '',
       messages: [{ role: 'user', content: enhancedPrompt }],
       temperature: 0.3, // Slightly creative but professional
@@ -256,6 +277,7 @@ Format your response as JSON:
 
     const result = await runAI({
       provider,
+      model: getDefaultModel(provider),
       apiKey: apiKey || '',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1, // More deterministic for structured output
